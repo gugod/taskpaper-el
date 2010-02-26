@@ -81,13 +81,11 @@
 (defvar taskpaper-mode-map (make-keymap)
   "*Keymap for Taskpaper major mode")
 
-(defvar taskpaper-indent-amount 4)
+(defvar taskpaper-indent-amount 8)
 
 (define-key taskpaper-mode-map "\C-c\C-p" 'taskpaper-create-new-project)
 (define-key taskpaper-mode-map "\C-c\C-t" 'taskpaper-create-new-task)
 (define-key taskpaper-mode-map "\C-c\C-d" 'taskpaper-toggle-task)
-(define-key taskpaper-mode-map "+"        'taskpaper-electric-mark)
-(define-key taskpaper-mode-map "-"        'taskpaper-electric-mark)
 
 ;; Face
 (defface taskpaper-project-face
@@ -149,6 +147,7 @@
   (use-local-map taskpaper-mode-map)
   (set (make-local-variable 'font-lock-defaults) '(taskpaper-font-lock-keywords))
   (set (make-local-variable 'indent-line-function) 'taskpaper-indent-line)
+  (set (make-local-variable 'indent-tab-mode) t)
   (run-hooks 'taskpaper-mode-hook))
 
 (add-to-list 'auto-mode-alist (cons "\\.taskpaper$" 'taskpaper-mode))
@@ -162,19 +161,21 @@
 (defun taskpaper-create-new-task (task)
   "Creates new task"
   (interactive "sNew Task: ")
-  (insert (concat "+ " task))
-  (newline-and-indent))
+  (insert (concat "- " task)))
 
-;; I don't use it, so I didn't touch it.
 (defun taskpaper-toggle-task ()
-  "Marks task as done"
+  "Toggle @done tag"
   (interactive)
   (save-excursion
-    (beginning-of-line)
-    (when (looking-at "[-+]")
-      (let ((mark (if (equal (match-string 0) "+") "-" "+")))
-        (delete-char 1)
-        (insert mark)))))
+    (end-of-line)
+    (backward-char 5)
+    (if (looking-at "@done")
+        (progn
+          (delete-char 5)
+          (delete-trailing-whitespace))
+      (progn
+        (end-of-line)
+        (insert " @done")))))
 
 (defun taskpaper-indent-line ()
   "Detects if list mark is needed when indented"
@@ -189,19 +190,9 @@
         (forward-line -1)
         (when (looking-at "^.+:[ \t]*$") (setq in-project t))
         (when (looking-at "[+-]") (setq mark-flag t))))
-    (when mark-flag (insert "- "))    
+    (when (not mark-flag) (insert "- "))
     (when in-project (indent-line-to taskpaper-indent-amount))
     (setq indent-tabs-mode old-tabs)))
-
-(defun taskpaper-electric-mark (arg)
-  "Inserts a list mark"
-  (interactive "*p")
-  (if (zerop (current-column))
-      (progn
-        (taskpaper-indent-line)
-        (self-insert-command arg)      
-        (insert " "))
-    (self-insert-command arg)))
 
 (provide 'taskpaper)
 ;;; taskpaper.el ends here
